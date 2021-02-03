@@ -1,0 +1,21 @@
+# 设置服务端口
+server:
+  port: 8082
+
+#设置eureka相关信息
+eureka:
+  instance:
+    hostname: ${spring.application.name}
+    ### 实例名称显示IP配置
+    preferIpAddress: true
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:8002/eureka/
+  # 注册到的eureka服务地址
+
+
+# 服务模块名称
+spring:
+  application:
+    name: ybtAccess
+
