@@ -3,6 +3,8 @@ package com.sinosoft.common;
 import org.jdom2.Document;
 import org.jdom2.JDOMException;
 import org.jdom2.input.SAXBuilder;
+import org.jdom2.output.Format;
+import org.jdom2.output.XMLOutputter;
 import org.xml.sax.InputSource;
 
 import java.io.*;
@@ -41,4 +43,38 @@ public class XMLUtils {
         Document reDoc = (new SAXBuilder()).build(is);
         return reDoc;
     }
+
+    /**
+     * document转字符串 UTF-8
+     * @param document
+     * @return
+     * @throws IOException
+     */
+    public static String Document2String(Document document) throws IOException {
+        Format format = Format.getPrettyFormat();
+        format.setEncoding("UTF-8");//设置xml文件的字符为gb2312，解决中文问题
+        XMLOutputter xmlout = new XMLOutputter(format);
+        ByteArrayOutputStream bo = new ByteArrayOutputStream();
+        xmlout.output(document,bo);
+        String xmlStr = bo.toString();
+        return xmlStr;
+    }
+
+    /**
+     * document转字符串
+     * @param document
+     * @param characterSet
+     * @return
+     * @throws IOException
+     */
+    public static String Document2String(Document document ,String characterSet) throws IOException {
+        Format format = Format.getPrettyFormat();
+        format.setEncoding(characterSet);//设置xml文件的字符为gb2312，解决中文问题
+        XMLOutputter xmlout = new XMLOutputter(format);
+        ByteArrayOutputStream bo = new ByteArrayOutputStream();
+        xmlout.output(document,bo);
+        String xmlStr = bo.toString();
+        return xmlStr;
+    }
+
 }

@@ -22,9 +22,7 @@ import java.io.OutputStream;
 @RequestMapping("/ybt")
 public class YbtAccess {
 
-    //Fegin调用核保模块
-    @Autowired
-    private UnderWritingClientService underWritingService;
+
 
     //处理交易Service
     @Autowired
@@ -56,21 +54,31 @@ public class YbtAccess {
             String funcflag = getFuncflag(requestDoc);
             log.info("报文中交易码Funcflag："+funcflag);
 
+            log.info("请求报文：");
+            String requestStr = XMLUtils.Document2String(requestDoc);
+            log.info(requestStr);
+
             //4.根据不同交易码调用Service
             Document responseDoc = null ;
 
             if ("02".equals(funcflag)) {
                 responseDoc = ybtAccessService.underWritingProcess(requestDoc);
+            } else if ("03".equals(funcflag)) {
+
+            } else {
+                //没找到交易？？
             }
 
             //2.判断交易类型远程调用模块
+
+            return null;
         } catch (Exception e) {
             e.printStackTrace();
             //异常返回统一报文
-            //TODO
+            return null;
         }
 
-        return null;
+
     }
 
     /**
@@ -94,14 +102,14 @@ public class YbtAccess {
 
     }
 
-    @RequestMapping("/testFegin")
-    public String testFegin(String testStr) throws IOException {
-//        String s = "";
-        log.info("请求入参："+testStr);
-        String s = underWritingService.UnderWritingService(testStr);
-
-        return s;
-    }
+//    @RequestMapping("/testFegin")
+//    public String testFegin(String testStr) throws IOException {
+////        String s = "";
+//        log.info("请求入参："+testStr);
+//        String s = underWritingService.UnderWritingService(testStr);
+//
+//        return s;
+//    }
 
 
 }
