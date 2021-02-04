@@ -8,7 +8,7 @@
         <version>0.0.1-SNAPSHOT</version>
     </parent>
     <groupId>com.sinosoft</groupId>
-    <artifactId>access</artifactId>
+    <artifactId>ybt_Access</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <packaging>jar</packaging>
 
@@ -24,6 +24,12 @@
         <dependency>
             <groupId>com.sinosoft</groupId>
             <artifactId>ybt_Api</artifactId>
+            <version>0.0.1-SNAPSHOT</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.sinosoft</groupId>
+            <artifactId>ybt_Common</artifactId>
             <version>0.0.1-SNAPSHOT</version>
         </dependency>
 
