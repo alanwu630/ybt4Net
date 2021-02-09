@@ -1,7 +1,7 @@
 package com.sinosoft.underwriting;
 
 import com.sinosoft.common.RedisUtil;
-import org.junit.jupiter.api.Test;
+import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -15,8 +15,12 @@ public class RedisTest {
     private RedisUtil redisUtil;
 
     @Test
-    public void redisTest(){
-        redisUtil.set("testKey","testValue");
+    public void redisTestSet(){
+        System.out.println(redisUtil.set("qq","testValue"));
+    }
 
+    @Test
+    public void redisTestGet(){
+        System.out.println(redisUtil.get("stestsKey"));
     }
 }
