@@ -22,7 +22,7 @@ public class YbtAccessServuceImpl implements YbtAccessService {
     @Override
     public Document underWritingProcess(Document requestDoc) {
 
-        //1.使用xstream解析报文
+        //1.使用xstream解析报文，将报文解析成实体类
 
 
         return null;

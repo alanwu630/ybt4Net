@@ -3,6 +3,7 @@ package com.sinosoft.access.ybtcontroller;
 import com.sinosoft.access.service.YbtAccessService;
 import com.sinosoft.api.UnderWritingClientService;
 import com.sinosoft.common.XMLUtils;
+import com.sinosoft.common.configenum.TransactionType;
 import lombok.extern.slf4j.Slf4j;
 import org.jdom2.Document;
 import org.jdom2.Element;
@@ -11,17 +12,23 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import javax.servlet.ServletOutputStream;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
+/**
+ * 银保通接口类
+ * 此接口接收银保通前置机转后得标准报文
+ * 新契约与保全服务接口
+ * 此模块属于银保通入口通道模块，后根据交易类型分别调用其他交易模块
+ */
 @Slf4j
 @RestController
 @RequestMapping("/ybt")
 public class YbtAccess {
-
 
 
     //处理交易Service
@@ -31,9 +38,13 @@ public class YbtAccess {
 
     //银保通所有交易入口方法
     @RequestMapping("/Transtion")
-    public OutputStream transtionInterface(HttpServletRequest request , HttpServletResponse response) throws IOException {
+    public void transtionInterface(HttpServletRequest request , HttpServletResponse response) throws IOException {
 
         log.info("--------------------------------------------------------------");
+
+        //先声明响应报文变量
+        Document responseDoc = null ;
+
         try {
             //获取对方ip，port
             String remoteHost = request.getRemoteHost();
@@ -59,25 +70,35 @@ public class YbtAccess {
             log.info(requestStr);
 
             //4.根据不同交易码调用Service
-            Document responseDoc = null ;
-
-            if ("02".equals(funcflag)) {
+            if ((TransactionType.UNDER_WRITING.getFuncflag()).equals(funcflag)) {
                 responseDoc = ybtAccessService.underWritingProcess(requestDoc);
-            } else if ("03".equals(funcflag)) {
+            } else if ((TransactionType.CONFIRM.getFuncflag()).equals(funcflag)) {
+
+            } else if ((TransactionType.QUERY_POLICY.getFuncflag()).equals(funcflag)) {
 
             } else {
                 //没找到交易？？
             }
 
-            //2.判断交易类型远程调用模块
-
-            return null;
         } catch (Exception e) {
             e.printStackTrace();
             //异常返回统一报文
-            return null;
+
         }
 
+        //5.接收返回报文
+        log.info("响应报文：");
+        String responseStr = XMLUtils.Document2String(responseDoc);
+        log.info(responseStr);
+
+        //6.将响应报文转换成Byte[]
+        byte[] responseBytes = responseStr.getBytes();
+
+        //7.响应报文
+        OutputStream outputStream = response.getOutputStream();
+        outputStream.write(responseBytes);
+        outputStream.flush();
+        outputStream.close();
 
     }
 
