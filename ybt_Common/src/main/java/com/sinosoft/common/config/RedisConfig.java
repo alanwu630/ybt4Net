@@ -11,11 +11,15 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.serializer.Jackson2JsonRedisSerializer;
 
-@Configuration
-@EnableAutoConfiguration
+/**
+ * 处理redis中key乱码问题
+ * 暂不使用，使用redisUtil工具类处理方法
+ */
+//@Configuration
+//@EnableAutoConfiguration
 public class RedisConfig {
 
-    @Bean
+//    @Bean
     public RedisTemplate<String, String> redisTemplate(RedisConnectionFactory factory) {
         StringRedisTemplate redisTemplate = new StringRedisTemplate(factory);
         Jackson2JsonRedisSerializer jackson2JsonRedisSerializer = new Jackson2JsonRedisSerializer(Object.class);

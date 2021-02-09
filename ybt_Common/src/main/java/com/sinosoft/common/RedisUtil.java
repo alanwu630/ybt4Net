@@ -3,6 +3,8 @@ package com.sinosoft.common;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.serializer.RedisSerializer;
+import org.springframework.data.redis.serializer.StringRedisSerializer;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 
@@ -22,6 +24,20 @@ public class RedisUtil {
     @Resource
     private RedisTemplate<String,Object> redisTemplate;
 
+
+    /**
+     * 处理key中文乱码，序列化问题
+     * @param redisTemplate
+     */
+    @Autowired(required = false)
+    public void setRedisTemplate(RedisTemplate redisTemplate) {
+        RedisSerializer stringSerializer = new StringRedisSerializer();
+        redisTemplate.setKeySerializer(stringSerializer);
+        redisTemplate.setValueSerializer(stringSerializer);
+        redisTemplate.setHashKeySerializer(stringSerializer);
+        redisTemplate.setHashValueSerializer(stringSerializer);
+        this.redisTemplate = redisTemplate;
+    }
 
     /**
      * 指定缓存失效时间

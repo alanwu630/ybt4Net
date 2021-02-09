@@ -16,7 +16,7 @@ public class RedisTest {
 
     @Test
     public void redisTestSet(){
-        System.out.println(redisUtil.set("qq","testValue"));
+        System.out.println(redisUtil.set("xixi","testValue"));
     }
 
     @Test
