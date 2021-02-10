@@ -25,6 +25,7 @@ public class YbtAccessServuceImpl implements YbtAccessService {
         //1.使用xstream解析报文，将报文解析成实体类
 
 
+
         return null;
     }
 }
