@@ -13,14 +13,13 @@ eureka:
       defaultZone: http://localhost:8002/eureka/
   # 注册到的eureka服务地址
 
-
 # 服务模块名称
 spring:
   application:
     name: ybtUnderWriting
   redis:
     database: 0
-    host: 192.168.152.131
+    host: 192.168.26.128
     port: 6379
     password:
     jedis:

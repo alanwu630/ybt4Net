@@ -29,6 +29,7 @@
         <module>ybt_Pojo</module>
         <module>ybt_PolicyService</module>
         <module>ybt_Api</module>
+        <module>ybt_Dao</module>
     </modules>
 
 

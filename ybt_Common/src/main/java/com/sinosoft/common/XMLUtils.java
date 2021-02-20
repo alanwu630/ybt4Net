@@ -77,4 +77,16 @@ public class XMLUtils {
         return xmlStr;
     }
 
+    /**
+     * 字符串转document
+     * @param docString
+     * @return
+     */
+    public static Document String2Document(String docString) throws JDOMException, IOException {
+        StringReader sr = new StringReader(docString);
+        InputSource is = new InputSource(sr);
+        Document doc = (new SAXBuilder()).build(is);
+        return doc;
+    }
+
 }

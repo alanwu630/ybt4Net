@@ -1,18 +1,15 @@
 package com.sinosoft.access.ybtcontroller;
 
 import com.sinosoft.access.service.YbtAccessService;
-import com.sinosoft.api.UnderWritingClientService;
 import com.sinosoft.common.XMLUtils;
 import com.sinosoft.common.configenum.TransactionType;
 import lombok.extern.slf4j.Slf4j;
 import org.jdom2.Document;
 import org.jdom2.Element;
-import org.jdom2.JDOMException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import javax.servlet.ServletOutputStream;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;

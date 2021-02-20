@@ -1,0 +1,12 @@
+spring:
+  datasource:
+    ybtdb :
+      username: root
+      password: 123456
+      jdbc-url: jdbc:mysql://192.168.26.128:3306/ybt
+      driver-class-name: com.mysql.jdbc.Driver
+    coredb:
+      username: root
+      password: 123456
+      jdbc-url: jdbc:mysql://192.168.26.128:3306/core
+      driver-class-name: com.mysql.jdbc.Driver
