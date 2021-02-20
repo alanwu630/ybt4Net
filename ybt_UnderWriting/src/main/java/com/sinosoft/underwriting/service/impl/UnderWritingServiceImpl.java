@@ -1,21 +1,34 @@
 package com.sinosoft.underwriting.service.impl;
+import java.math.BigDecimal;
+import java.util.*;
 
+import com.sinosoft.common.RedisUtil;
+import com.sinosoft.utils.TranDataUtil;
 import com.sinosoft.pojo.TradeData;
 import com.sinosoft.returnpojo.TranData;
 import com.sinosoft.dao.ybt.LktransstatusMapper;
 import com.sinosoft.underwriting.service.UnderWritingService;
+import com.sinosoft.ybtentity.LkRuleEngine;
+import com.sinosoft.ybtentity.Lktransstatus;
+import com.sinosoft.ybtentity.LktransstatusExample;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+@Slf4j
 @RestController
 @RequestMapping("ybtUd")
 public class UnderWritingServiceImpl implements UnderWritingService {
 
-//    @Autowired
-//    private LktransstatusMapper lktransstatusMapper;
+    @Autowired
+    private LktransstatusMapper lktransstatusMapper;
+
+    @Autowired
+    private RedisUtil redisUtil;
 
 
     /**
@@ -27,8 +40,196 @@ public class UnderWritingServiceImpl implements UnderWritingService {
     @RequestMapping(value = "underwriting" ,method = RequestMethod.POST)
     public TranData UnderWritingService(@RequestParam TradeData tradeData) {
         //1.先将交易日志入库
+        //1.1将实体类信息取出
+        log.info("将交易数据插入交易日志表");
+        Lktransstatus lktransstatus = getLogRecordInfo(tradeData);
+        //1.2先判断流水号是否重复
+        log.info("判断交易流水号是否重复，流水号："+lktransstatus.getTransNo());
+        LktransstatusExample example = new LktransstatusExample();
+        LktransstatusExample.Criteria criteria = example.createCriteria();
+        criteria.andTransNoEqualTo(lktransstatus.getTransNo());
+        int countRecord = lktransstatusMapper.countByExample(example);
+        if (countRecord > 0) {
+            log.info("交易流水号重复，流水号："+lktransstatus.getTransNo());
+            //更新交易日志表
+            lktransstatus.setTransStatus("2");
+            lktransstatus.setModifydate(new Date());
+            lktransstatus.setModifytime("");
+            lktransstatus.setDescr("交易流水号重复");
+            updateTransLog(lktransstatus);
+            return TranDataUtil.GetErrorData(lktransstatus.getTransNo(),lktransstatus.getProposalNo(),"交易流水号重复！");
+        }
+        //1.3交易日志入库
+        int insert = lktransstatusMapper.insert(lktransstatus);
+
+        //2.保单信息入库
+        //2.1关系型数据库，略
+
+        //2.2
+
+        //3.校验网点等信息，略
+
+        //4.获取险种代码，查询redis中规则sql
+        //4.1为防止规则查询异常，先判断销售渠道和险种是否有权限
+        if (!getSaleJurisdiction(lktransstatus)) {
+            log.info("无销售权限，流水号："+lktransstatus.getTransNo());
+            //更新交易日志表
+            lktransstatus.setTransStatus("2");
+            lktransstatus.setModifydate(new Date());
+            lktransstatus.setModifytime("");
+            lktransstatus.setDescr("无销售权限");
+            updateTransLog(lktransstatus);
+            return TranDataUtil.GetErrorData(lktransstatus.getTransNo(),lktransstatus.getProposalNo(),"无销售权限！");
+        }
+
+        //4.2根据渠道查询通用规则序号（投保人，被保人，受益人要素规则，反洗钱规则）（如以后增加其他渠道）
+        //先获取渠道
+        String operator = lktransstatus.getBankOperator();
+        log.info("交易渠道为："+ operator);
+        List<LkRuleEngine> ruleEngines = getCurrencyRules(operator);
+
+        //有权限销售的一定有规则，如集合为空则有误
+        if (null == ruleEngines || ruleEngines.isEmpty()) {
+            log.info("获取规则引擎失败，流水号："+lktransstatus.getTransNo());
+            //更新交易日志表
+            lktransstatus.setTransStatus("2");
+            lktransstatus.setModifydate(new Date());
+            lktransstatus.setModifytime("");
+            lktransstatus.setDescr("获取规则引擎失败");
+            updateTransLog(lktransstatus);
+            return TranDataUtil.GetErrorData(lktransstatus.getTransNo(),lktransstatus.getProposalNo(),"无销售权限！");
+        }
+
+
 
 
         return null;
+    }
+
+    /**
+     * 更新交易日志表
+     * @param lktransstatus
+     */
+    private void updateTransLog(Lktransstatus lktransstatus) {
+        LktransstatusExample example = new LktransstatusExample();
+        example.createCriteria().andTransNoEqualTo(lktransstatus.getTransNo());
+        lktransstatusMapper.updateByExample(lktransstatus,example);
+    }
+
+    /**
+     * 判断销售权限
+     * @return
+     * @param lktransstatus
+     */
+    private boolean getSaleJurisdiction(Lktransstatus lktransstatus) {
+
+        try {
+            //判断渠道与险种,如value为1，则有权限
+            log.info("判断渠道与险种是否有销售权限，渠道：" + lktransstatus.getBankOperator() + "险种：" + lktransstatus.getRiskcode());
+            String value = (String) redisUtil.get("SaleJurisdiction|" + lktransstatus.getBankOperator() + lktransstatus.getRiskcode());
+            if (!StringUtils.isEmpty(value)) {
+                log.info("渠道：" + lktransstatus.getBankOperator() + "险种：" + lktransstatus.getRiskcode() + "可以销售");
+                return true;
+            } else {
+                //根绝渠道与险种在关系型数据库中查询，如果结果大于0.则有权限
+                int resultSize = 1;//省略查询数据库
+
+                //放入缓存
+                if (resultSize > 0) {
+                    redisUtil.set("SaleJurisdiction|" + lktransstatus.getBankOperator() + lktransstatus.getRiskcode(), "1");
+                    return true;
+                }
+            }
+        } catch (Exception e) {
+            log.info("判断渠道与险种是否有销售权限异常");
+            e.printStackTrace();
+        }
+
+        return false;
+    }
+
+    /**
+     * 根据渠道获取通用规则
+     * @param operator
+     * @return
+     */
+    private List<LkRuleEngine> getCurrencyRules(String operator) {
+        //根据渠道查询数据库通用规则序号，先在redis中查询，如redis中不存在，则查询关系型数据库
+        log.info("获取通用规则，渠道："+operator);
+        List<LkRuleEngine> ruleEngines = Collections.emptyList();
+        try {
+
+            log.info("从redis中获取通用规则，key："+"currencyRule|" + operator);
+            List<Object> ruleList = redisUtil.lGet("currencyRule|" + operator, 0, -1);
+
+            //判空
+            if (null == ruleEngines && ruleList.isEmpty()) {
+                //在缓存中没有或者渠道有误
+                //在关系型数据库中查询，略
+                ruleEngines = ruleEngines;//数据库查询结果
+
+                //继续判空，关系型数据库集合
+                if (null == ruleEngines && ruleList.isEmpty()) {
+                    //直接返回空集合，有误
+                    log.info("查询规则异常！key："+"currencyRule|" + operator);
+                    return ruleEngines;
+                }
+
+                //到这 ruleEngines 集合中以存在规则sql
+                //将规则sql存入缓存，并设置缓存1天
+                redisUtil.lSet("currencyRule|" + operator,ruleEngines);
+
+            }
+
+            LkRuleEngine[] lkRuleEngineArr = ruleList.toArray(new LkRuleEngine[ruleList.size()]);
+            Collections.addAll(ruleEngines, lkRuleEngineArr);
+
+        } catch (Exception e) {
+            log.info("查询规则异常！key："+"currencyRule|" + operator);
+            e.printStackTrace();
+        }
+        return ruleEngines;
+    }
+
+    /**
+     * 将实体类数据解析
+     * @param tradeData
+     * @return
+     */
+    private Lktransstatus getLogRecordInfo(TradeData tradeData) {
+        Lktransstatus lktransstatus = new Lktransstatus();
+        lktransstatus.setTransCode(tradeData.getBaseInfo().getTranNo());
+        lktransstatus.setBankCode("");
+        lktransstatus.setBankBranch("");
+        lktransstatus.setBankNode("");
+        lktransstatus.setBankOperator("");
+        lktransstatus.setTransNo("");
+        lktransstatus.setFuncflag("");
+        lktransstatus.setTransdate(new Date());
+        lktransstatus.setTranstime("");
+        lktransstatus.setManagecom("");
+        lktransstatus.setRiskcode("");
+        lktransstatus.setProposalNo("");
+        lktransstatus.setPrtNo("");
+        lktransstatus.setPolNo("");
+        lktransstatus.setEdorNo("");
+        lktransstatus.setTempfeeNo("");
+        lktransstatus.setTransAmnt(new BigDecimal("0"));
+        lktransstatus.setBankAccount("");
+        lktransstatus.setRcode("");
+        lktransstatus.setTransStatus("");
+        lktransstatus.setStatus("");
+        lktransstatus.setDescr("");
+        lktransstatus.setTemp("");
+        lktransstatus.setClientIp("");
+        lktransstatus.setClientPort("");
+        lktransstatus.setServiceStarttime(new Date());
+        lktransstatus.setServiceEndtime(new Date());
+        lktransstatus.setMakedate(new Date());
+        lktransstatus.setMaketime("");
+        lktransstatus.setModifydate(new Date());
+        lktransstatus.setModifytime("");
+
+        return lktransstatus;
     }
 }
