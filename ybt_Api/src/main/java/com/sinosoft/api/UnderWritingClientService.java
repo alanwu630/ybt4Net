@@ -14,4 +14,6 @@ public interface UnderWritingClientService {
     @RequestMapping(value = "/ybtUd/underwriting" , method = RequestMethod.POST)
     TranData UnderWritingService (@RequestParam TradeData tradeData);
 
+    @RequestMapping(value = "/ybtUd/confirm" , method = RequestMethod.POST)
+    TranData ConfirmService (@RequestParam TradeData tradeData);
 }

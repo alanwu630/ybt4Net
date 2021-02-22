@@ -9,5 +9,6 @@ public class LkRuleEngine {
     private String channel;
     private String riskCode;
     private String ruleSql;
+    private String RuleMessage;//规则提示语
 
 }

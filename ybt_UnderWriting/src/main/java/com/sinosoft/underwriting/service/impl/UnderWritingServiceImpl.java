@@ -1,8 +1,10 @@
 package com.sinosoft.underwriting.service.impl;
+import java.lang.reflect.InvocationTargetException;
 import java.math.BigDecimal;
 import java.util.*;
 
 import com.sinosoft.common.RedisUtil;
+import com.sinosoft.dao.util.RuleUtil;
 import com.sinosoft.utils.TranDataUtil;
 import com.sinosoft.pojo.TradeData;
 import com.sinosoft.returnpojo.TranData;
@@ -11,6 +13,7 @@ import com.sinosoft.underwriting.service.UnderWritingService;
 import com.sinosoft.ybtentity.LkRuleEngine;
 import com.sinosoft.ybtentity.Lktransstatus;
 import com.sinosoft.ybtentity.LktransstatusExample;
+import com.sinosoft.ybtentity.RuleResult;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.StringUtils;
@@ -30,6 +33,8 @@ public class UnderWritingServiceImpl implements UnderWritingService {
     @Autowired
     private RedisUtil redisUtil;
 
+    @Autowired
+    private RuleUtil ruleUtil;
 
     /**
      * 新契约核保交易
@@ -65,7 +70,12 @@ public class UnderWritingServiceImpl implements UnderWritingService {
         //2.保单信息入库
         //2.1关系型数据库，略
 
-        //2.2
+        //2.2数据入redis
+        if (redisUtil.hasKey("policyInfo|"+lktransstatus.getProposalNo())) {
+            //则删除
+            redisUtil.del("policyInfo|"+lktransstatus.getProposalNo());
+        }
+        redisUtil.set("policyInfo|"+lktransstatus.getProposalNo(),tradeData);
 
         //3.校验网点等信息，略
 
@@ -100,10 +110,143 @@ public class UnderWritingServiceImpl implements UnderWritingService {
             return TranDataUtil.GetErrorData(lktransstatus.getTransNo(),lktransstatus.getProposalNo(),"无销售权限！");
         }
 
+        //5.先校验通用规则
+        RuleResult ruleResult = checkCurrencyRules(tradeData,ruleEngines);
+        if (null == ruleResult) {
+            log.info("校验通用规则异常，流水号："+lktransstatus.getTransNo());
+            //更新交易日志表
+            lktransstatus.setTransStatus("2");
+            lktransstatus.setModifydate(new Date());
+            lktransstatus.setModifytime("");
+            lktransstatus.setDescr("校验通用规则异常");
+            updateTransLog(lktransstatus);
+            return TranDataUtil.GetErrorData(lktransstatus.getTransNo(),lktransstatus.getProposalNo(),"校验通用规则异常！");
+        }
+        if (!"1".equals(ruleResult.getFlag())) {//如不为1，则被规则卡住
+            LkRuleEngine engine = ruleResult.getLkRuleEngine();
+            log.info("校验通用规则:"+engine.getRuleMessage()+"，流水号："+lktransstatus.getTransNo());
+            //更新交易日志表
+            lktransstatus.setTransStatus("2");
+            lktransstatus.setModifydate(new Date());
+            lktransstatus.setModifytime("");
+            lktransstatus.setDescr(engine.getRuleMessage());
+            updateTransLog(lktransstatus);
+            return TranDataUtil.GetErrorData(lktransstatus.getTransNo(),lktransstatus.getProposalNo(),engine.getRuleMessage());
+        }
 
 
+        //6.1根据险种获取险种规则
+        String riskcode = lktransstatus.getRiskcode();
+        log.info("险种为："+riskcode);
+        List<LkRuleEngine> riskRuleEngines = getRiskRules(riskcode);
+        //有权限销售的一定有规则，如集合为空则有误
+        if (null == ruleEngines || ruleEngines.isEmpty()) {
+            log.info("获取规则引擎失败，流水号："+lktransstatus.getTransNo());
+            //更新交易日志表
+            lktransstatus.setTransStatus("2");
+            lktransstatus.setModifydate(new Date());
+            lktransstatus.setModifytime("");
+            lktransstatus.setDescr("获取规则引擎失败");
+            updateTransLog(lktransstatus);
+            return TranDataUtil.GetErrorData(lktransstatus.getTransNo(),lktransstatus.getProposalNo(),"无销售权限！");
+        }
 
-        return null;
+        //6.2与通用规则同理
+
+
+        //7修改数据库状态
+
+
+        //8响应报文
+
+
+        TranData tranData = new TranData();
+        return tranData;
+    }
+
+    /**
+     * 校验通用规则
+     * @param tradeData
+     * @param ruleEngines
+     * @return
+     */
+    private RuleResult checkCurrencyRules(TradeData tradeData, List<LkRuleEngine> ruleEngines) {
+        //循环规则
+        RuleResult ruleResult = new RuleResult();
+        try {
+
+            for (LkRuleEngine engine :
+                    ruleEngines) {
+                //以一个例子为准
+                //反洗钱规则，投保人证件类型与国籍规则
+                /**
+                 * SELECT
+                 * CASE
+                 * WHEN '1' = @idtype THEN(CASE WHEN  '156' = @na THEN 1 ELSE 0 END)
+                 * WHEN  '25' = @idtype THEN(CASE WHEN  '157' = @na THEN 1 ELSE 0 END)
+                 * ELSE 1
+                 * END FROM(SELECT @idtype :=?LCAppnt.IDType?)idtype, (SELECT @na :=?LCAppnt.NativePlace?)na;
+                 */
+                String ruleSql = engine.getRuleSql();
+
+                Boolean ruleFlag = ruleUtil.checkRuleSql(tradeData,ruleSql);
+                //规则校验被卡住
+                if (!ruleFlag) {
+                    ruleResult.setFlag("0");
+                    ruleResult.setLkRuleEngine(engine);
+                    return ruleResult;
+                }
+
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+        ruleResult.setFlag("1");
+        return ruleResult;
+    }
+
+    /**
+     * 获取险种规则
+     * @param riskcode
+     * @return
+     */
+    private List<LkRuleEngine> getRiskRules(String riskcode) {
+        //根据渠道查询数据库通用规则序号，先在redis中查询，如redis中不存在，则查询关系型数据库
+        log.info("获取险种规则，险种代码："+riskcode);
+        List<LkRuleEngine> ruleEngines = Collections.emptyList();
+        try {
+
+            log.info("从redis中获取险种规则，key："+"riskRule|" + riskcode);
+            List<Object> ruleList = redisUtil.lGet("riskRule|" + riskcode, 0, -1);
+
+            //判空
+            if (null == ruleEngines && ruleList.isEmpty()) {
+                //在缓存中没有或者渠道有误
+                //在关系型数据库中查询，略
+                ruleEngines = ruleEngines;//数据库查询结果
+
+                //继续判空，关系型数据库集合
+                if (null == ruleEngines && ruleList.isEmpty()) {
+                    //直接返回空集合，有误
+                    log.info("查询规则异常！key："+"riskRule|" + riskcode);
+                    return ruleEngines;
+                }
+
+                //到这 ruleEngines 集合中以存在规则sql
+                //将规则sql存入缓存，并设置缓存1天
+                redisUtil.lSet("riskRule|" + riskcode,ruleEngines);
+
+            }
+
+            LkRuleEngine[] lkRuleEngineArr = ruleList.toArray(new LkRuleEngine[ruleList.size()]);
+            Collections.addAll(ruleEngines, lkRuleEngineArr);
+
+        } catch (Exception e) {
+            log.info("查询规则异常！key："+"riskRule|" + riskcode);
+            e.printStackTrace();
+        }
+        return ruleEngines;
     }
 
     /**

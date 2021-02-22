@@ -70,7 +70,7 @@ public class YbtAccess {
             if ((TransactionType.UNDER_WRITING.getFuncflag()).equals(funcflag)) {
                 responseDoc = ybtAccessService.underWritingProcess(requestDoc);
             } else if ((TransactionType.CONFIRM.getFuncflag()).equals(funcflag)) {
-
+                responseDoc = ybtAccessService.confirmProcess(requestDoc);
             } else if ((TransactionType.QUERY_POLICY.getFuncflag()).equals(funcflag)) {
 
             } else {

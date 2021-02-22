@@ -57,6 +57,41 @@ public class YbtAccessServuceImpl implements YbtAccessService {
     }
 
     /**
+     * 调用签单微服务
+     * @param requestDoc
+     * @return
+     */
+    @Override
+    public Document confirmProcess(Document requestDoc) {
+        log.info("进入签单转发类：StartProcess");
+
+        //定义响应document
+        Document responseDoc = null;
+
+        try{
+
+            log.info("1.开始将报文转换成实体类：strat");
+            //1.使用xstream解析报文，将报文解析成实体类
+            TradeData tradeData = XStreamUtil.ToBean(XMLUtils.Document2String(requestDoc), TradeData.class);
+            log.info("报文转换成实体类：end");
+            log.info("2.远程调用核保模块：start");
+            //2.将对象通过fegin发送到核保模块
+            TranData tranData = underWritingService.ConfirmService(tradeData);
+            log.info("接收签单响应  end，处理结果："+getFlag(tranData));
+            //3.将实体类转换成document
+            log.info("3.将返回结果转换成Document：start");
+            String responseStr = XStreamUtil.ToXml(tranData);
+            responseDoc = XMLUtils.String2Document(responseStr);
+            log.info("转换成Document：end");
+
+        }catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return responseDoc;
+    }
+
+    /**
      * 判断核保结果
      * @param tranData
      * @return
