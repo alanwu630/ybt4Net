@@ -30,6 +30,7 @@
         <module>ybt_PolicyService</module>
         <module>ybt_Api</module>
         <module>ybt_Dao</module>
+        <module>ybt_Newbiz</module>
     </modules>
 
 

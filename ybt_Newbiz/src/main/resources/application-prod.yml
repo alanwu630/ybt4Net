@@ -1,6 +1,6 @@
 # 设置服务端口
 server:
-  port: 8092
+  port: 8191
 
 #设置eureka相关信息
 eureka:
@@ -10,13 +10,13 @@ eureka:
     preferIpAddress: true
   client:
     serviceUrl:
-      defaultZone: http://localhost:8002/eureka/
-  # 注册到的eureka服务地址
+      defaultZone: http://localhost:8001/eureka/
+# 注册到的eureka服务地址
 
 # 服务模块名称
 spring:
   application:
-    name: ybtUnderWriting
+    name: ybtNewbiz
   redis:
     database: 0
     host: 192.168.26.128
@@ -31,7 +31,5 @@ spring:
     timeout: 1000
 
 rocketmq:
-  name-server: 192.168.26.128:9876 # rocketmq服务的地址
-  producer:
-    group: producer-policy
+  name-server: 192.168.26.128:9876
 

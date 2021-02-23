@@ -5,6 +5,7 @@ import com.sinosoft.dao.util.RuleUtil;
 import com.sinosoft.dao.ybt.LktransstatusMapper;
 import com.sinosoft.pojo.TradeData;
 import com.sinosoft.returnpojo.TranData;
+import com.sinosoft.underwriting.producer.PolicyProducer;
 import com.sinosoft.underwriting.service.ConfirmService;
 import com.sinosoft.underwriting.service.UnderWritingService;
 import com.sinosoft.utils.TranDataUtil;
@@ -35,6 +36,9 @@ public class ConfirmServiceImpl implements ConfirmService {
 
     @Autowired
     private RedisUtil redisUtil;
+
+    @Autowired
+    private PolicyProducer policyProducer;
 
 
     /**
@@ -68,7 +72,8 @@ public class ConfirmServiceImpl implements ConfirmService {
         //1.3交易日志入库
         int insert = lktransstatusMapper.insert(lktransstatus);
 
-        //2.发送消息到签单模块（根据投保单号）
+        //2.发送消息到签单模块（根据投保单号）(异步落地)
+        policyProducer.send("Topic1",lktransstatus.getProposalNo());
 
         //直接返回成功报文
         TranData tranData = new TranData();
