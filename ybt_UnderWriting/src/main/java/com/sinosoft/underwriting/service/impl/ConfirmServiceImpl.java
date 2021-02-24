@@ -129,8 +129,6 @@ public class ConfirmServiceImpl implements ConfirmService {
         lktransstatus.setMaketime("");
         lktransstatus.setModifydate(new Date());
         lktransstatus.setModifytime("");
-        lktransstatus.setModifytime("分零六零六得到可靠的");
-        lktransstatus.setModifytime("附件附件二覅i发");
 
         return lktransstatus;
     }
