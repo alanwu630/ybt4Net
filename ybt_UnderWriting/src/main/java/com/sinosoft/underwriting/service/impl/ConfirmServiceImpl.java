@@ -129,7 +129,7 @@ public class ConfirmServiceImpl implements ConfirmService {
         lktransstatus.setMaketime("");
         lktransstatus.setModifydate(new Date());
         lktransstatus.setModifytime("");
-
+        String s=new String();
         return lktransstatus;
     }
 }
