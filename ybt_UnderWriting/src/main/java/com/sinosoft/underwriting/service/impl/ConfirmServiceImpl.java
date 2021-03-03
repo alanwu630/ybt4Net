@@ -73,11 +73,29 @@ public class ConfirmServiceImpl implements ConfirmService {
         int insert = lktransstatusMapper.insert(lktransstatus);
 
         //2.发送消息到签单模块（根据投保单号）(异步落地)
-        policyProducer.send("Topic1",lktransstatus.getProposalNo());
+        //2.1为解决消费者消费幂等性的问题，在redis中添加Key（保单号）
+        boolean txFlag = redisUtil.set("TxPolicyCode|" + lktransstatus.getProposalNo(), 60 * 60 * 30);
+        //2.2发送消息
+        if (txFlag) {
+            policyProducer.sendTxMessage("Topic1",lktransstatus.getProposalNo());
+        }
+
+
+        //3.更新数据库状态
 
         //直接返回成功报文
         TranData tranData = new TranData();
         return tranData;
+    }
+
+    /**
+     * 更新数据库状态
+     * @param proposalno
+     * @return
+     */
+    public boolean updatePolicyConfirmFlag(String proposalno) {
+        //更新数据库状态
+        return true;
     }
 
     /**
@@ -131,5 +149,10 @@ public class ConfirmServiceImpl implements ConfirmService {
         lktransstatus.setModifytime("");
 
         return lktransstatus;
+    }
+
+    public Integer selectFlagByProposalNo(String transactionId) {
+        //略
+        return 1;
     }
 }
